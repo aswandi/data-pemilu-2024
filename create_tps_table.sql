@@ -1,0 +1,14 @@
+CREATE TABLE tps (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pro VARCHAR(100),
+    kab VARCHAR(100),
+    kec VARCHAR(100),
+    kel VARCHAR(100),
+    kode_kel VARCHAR(20),
+    no_tps INT,
+    dpt_l INT,
+    dpt_p INT,
+    total_dpt INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
