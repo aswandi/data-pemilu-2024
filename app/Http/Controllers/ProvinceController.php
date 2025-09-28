@@ -6,6 +6,11 @@ use App\Models\Province;
 use App\Models\Dapil;
 use App\Models\VoteData;
 use App\Exports\VoteDataExport;
+use App\Exports\KecamatanVoteDataExport;
+use App\Exports\KecamatanMultiSheetExport;
+use App\Exports\KecamatanWebFormatExport;
+use App\Exports\KecamatanCalegByDapilExport;
+use App\Exports\TpsMultiSheetExport;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -354,6 +359,213 @@ class ProvinceController extends Controller
         }
     }
 
+    public function suaraKecamatan($kecamatanId)
+    {
+        try {
+            // Get kecamatan info
+            $kecamatanInfo = Province::getKecamatanInfo($kecamatanId);
+
+            // Get kelurahan data for this kecamatan
+            $kelurahanData = Province::getKelurahanDataWithStats($kecamatanId);
+
+            // Get vote data for each kelurahan in this kecamatan
+            $kelurahanVoteData = [];
+            foreach($kelurahanData as $kelurahan) {
+                $voteData = VoteData::getVoteDataByKelurahan($kelurahan->id);
+                $tpsData = VoteData::getTpsDataByKelurahan($kelurahan->id);
+                if (!empty($voteData)) {
+                    $kelurahanVoteData[] = [
+                        'kelurahan_info' => $kelurahan,
+                        'vote_data' => $voteData[0], // Get first record
+                        'tps_data' => $tpsData
+                    ];
+                }
+            }
+
+            // Get party data
+            $parties = VoteData::getPartyData();
+
+            // Get caleg data and process with party rows
+            $calegData = VoteData::getCalegData();
+
+            // Calculate caleg votes for this kecamatan
+            $calegVotes = [];
+            foreach($kelurahanVoteData as $kelData) {
+                $tbl = json_decode($kelData['vote_data']->tbl, true) ?? [];
+                foreach($tbl as $tpsId => $tpsData) {
+                    foreach($tpsData as $calegId => $votes) {
+                        if ($calegId !== 'null' && is_numeric($calegId) && $votes > 0) {
+                            if (!isset($calegVotes[$calegId])) {
+                                $calegVotes[$calegId] = 0;
+                            }
+                            $calegVotes[$calegId] += intval($votes);
+                        }
+                    }
+                }
+            }
+
+            // Group caleg with votes by party and add party rows
+            $calegWithVotes = [];
+            $calegByPartai = [];
+
+            // Group caleg by party
+            foreach($calegData as $caleg) {
+                if (isset($calegVotes[$caleg->id])) {
+                    $caleg->total_suara = $calegVotes[$caleg->id];
+                    $calegByPartai[$caleg->partai_id][] = $caleg;
+                }
+            }
+
+            // Sort caleg within each party
+            foreach($calegByPartai as $partaiId => $calegs) {
+                usort($calegByPartai[$partaiId], function($a, $b) {
+                    return $a->nomor_urut - $b->nomor_urut;
+                });
+            }
+
+            // Create final caleg list with party rows
+            foreach($parties as $party) {
+                if (isset($calegByPartai[$party->nomor_urut])) {
+                    // Add party row (votes without caleg)
+                    $partaiRow = (object)[
+                        'id' => 'partai_' . $party->nomor_urut,
+                        'is_party_row' => true,
+                        'partai_id' => $party->nomor_urut,
+                        'nama' => 'Suara Partai (tanpa caleg)',
+                        'nomor_urut' => 'PARTAI',
+                        'jenis_kelamin' => '-'
+                    ];
+                    $calegWithVotes[] = $partaiRow;
+
+                    // Add caleg for this party
+                    foreach($calegByPartai[$party->nomor_urut] as $caleg) {
+                        $calegWithVotes[] = $caleg;
+                    }
+                }
+            }
+
+            return Inertia::render('Suara/KecamatanIndex', [
+                'kelurahanVoteData' => $kelurahanVoteData,
+                'parties' => $parties,
+                'calegData' => $calegWithVotes,
+                'kecamatanName' => $kecamatanInfo['kecamatan_name'],
+                'kabupatenName' => $kecamatanInfo['kabupaten_name'],
+                'provinceName' => $kecamatanInfo['province_name'],
+                'provinceId' => $kecamatanInfo['province_id'],
+                'kabupatenId' => $kecamatanInfo['kabupaten_id'],
+                'kecamatanId' => $kecamatanId,
+                'title' => "Data Suara per Kelurahan - Kecamatan {$kecamatanInfo['kecamatan_name']}"
+            ]);
+        } catch (\Exception $e) {
+            return Inertia::render('Suara/KecamatanIndex', [
+                'kelurahanVoteData' => [],
+                'parties' => [],
+                'calegData' => [],
+                'kecamatanName' => 'Error',
+                'kabupatenName' => 'Error',
+                'provinceName' => 'Error',
+                'provinceId' => 0,
+                'kabupatenId' => 0,
+                'kecamatanId' => $kecamatanId,
+                'title' => 'Data Suara per Kelurahan - Error',
+                'error' => 'Database connection error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function exportKecamatanSuaraExcel($kecamatanId)
+    {
+        try {
+            // Get kecamatan info
+            $kecamatanInfo = Province::getKecamatanInfo($kecamatanId);
+
+            $fileName = 'Data_Suara_Kecamatan_' . str_replace(' ', '_', $kecamatanInfo['kecamatan_name']) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+            return Excel::download(
+                new KecamatanWebFormatExport(
+                    $kecamatanId,
+                    $kecamatanInfo['kecamatan_name'],
+                    $kecamatanInfo['kabupaten_name'],
+                    $kecamatanInfo['province_name']
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Export failed: ' . $e->getMessage());
+        }
+    }
+
+    public function tpsKecamatan($kecamatanId)
+    {
+        try {
+            // Get kecamatan info
+            $kecamatanInfo = Province::getKecamatanInfo($kecamatanId);
+
+            // Get optimized TPS data for this kecamatan with vote data
+            $tpsData = VoteData::getTpsDataWithVotesKecamatan($kecamatanId);
+
+            // Get limited party data (only essential fields)
+            $parties = VoteData::getEssentialPartyData();
+
+            // Get caleg data for vote calculation
+            $calegData = VoteData::getCalegData();
+
+            // Get statistics summary instead of all caleg data
+            $tpsStats = VoteData::getTpsStatsByKecamatan($kecamatanId);
+
+            return Inertia::render('Suara/TpsKecamatanIndex', [
+                'tpsData' => $tpsData,
+                'parties' => $parties,
+                'calegData' => $calegData,
+                'tpsStats' => $tpsStats,
+                'kecamatanName' => $kecamatanInfo['kecamatan_name'],
+                'kabupatenName' => $kecamatanInfo['kabupaten_name'],
+                'provinceName' => $kecamatanInfo['province_name'],
+                'provinceId' => $kecamatanInfo['province_id'],
+                'kabupatenId' => $kecamatanInfo['kabupaten_id'],
+                'kecamatanId' => $kecamatanId,
+                'title' => "Data TPS - Kecamatan {$kecamatanInfo['kecamatan_name']}"
+            ]);
+        } catch (\Exception $e) {
+            return Inertia::render('Suara/TpsKecamatanIndex', [
+                'tpsData' => [],
+                'parties' => [],
+                'calegData' => [],
+                'tpsStats' => [],
+                'kecamatanName' => 'Error',
+                'kabupatenName' => 'Error',
+                'provinceName' => 'Error',
+                'provinceId' => 0,
+                'kabupatenId' => 0,
+                'kecamatanId' => $kecamatanId,
+                'title' => 'Data TPS - Error',
+                'error' => 'Database connection error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function exportTpsExcel($kecamatanId)
+    {
+        try {
+            // Get kecamatan info
+            $kecamatanInfo = Province::getKecamatanInfo($kecamatanId);
+
+            $fileName = 'Data_TPS_Kecamatan_' . str_replace(' ', '_', $kecamatanInfo['kecamatan_name']) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+            return Excel::download(
+                new TpsMultiSheetExport(
+                    $kecamatanId,
+                    $kecamatanInfo['kecamatan_name'],
+                    $kecamatanInfo['kabupaten_name'],
+                    $kecamatanInfo['province_name']
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Export failed: ' . $e->getMessage());
+        }
+    }
+
     public function suaraCaleg($kelurahanId)
     {
         try {
@@ -444,6 +656,28 @@ class ProvinceController extends Controller
                 'title' => 'Data Suara Caleg - Error',
                 'error' => 'Database connection error: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    public function exportKecamatanCalegByDapil($kecamatanId)
+    {
+        try {
+            // Get kecamatan info
+            $kecamatanInfo = Province::getKecamatanInfo($kecamatanId);
+
+            $fileName = 'Data_Caleg_Per_Dapil_Kecamatan_' . str_replace(' ', '_', $kecamatanInfo['kecamatan_name']) . '_' . date('Y-m-d_H-i-s') . '.xlsx';
+
+            return Excel::download(
+                new KecamatanCalegByDapilExport(
+                    $kecamatanId,
+                    $kecamatanInfo['kecamatan_name'],
+                    $kecamatanInfo['kabupaten_name'],
+                    $kecamatanInfo['province_name']
+                ),
+                $fileName
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Export caleg by dapil failed: ' . $e->getMessage());
         }
     }
 }

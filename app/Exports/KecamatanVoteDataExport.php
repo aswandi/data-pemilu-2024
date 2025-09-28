@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\VoteData;
+use App\Models\Province;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -12,47 +13,61 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class VoteDataExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithColumnFormatting, WithTitle
+class KecamatanVoteDataExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithColumnFormatting, WithTitle
 {
-    protected $kabupatenId;
+    protected $kecamatanId;
+    protected $kecamatanName;
     protected $kabupatenName;
     protected $provinceName;
     protected $parties;
-    protected $voteData;
+    protected $kelurahanVoteData;
 
-    public function __construct($kabupatenId, $kabupatenName, $provinceName)
+    public function __construct($kecamatanId, $kecamatanName, $kabupatenName, $provinceName)
     {
-        $this->kabupatenId = $kabupatenId;
+        $this->kecamatanId = $kecamatanId;
+        $this->kecamatanName = $kecamatanName;
         $this->kabupatenName = $kabupatenName;
         $this->provinceName = $provinceName;
         $this->parties = VoteData::getPartyData();
-        $this->voteData = VoteData::getVoteDataByKabupaten($kabupatenId);
+
+        // Get kelurahan data for this kecamatan
+        $kelurahanData = Province::getKelurahanDataWithStats($kecamatanId);
+        $this->kelurahanVoteData = [];
+
+        foreach($kelurahanData as $kelurahan) {
+            $voteData = VoteData::getVoteDataByKelurahan($kelurahan->id);
+            if (!empty($voteData)) {
+                $this->kelurahanVoteData[] = [
+                    'kelurahan_info' => $kelurahan,
+                    'vote_data' => $voteData[0] // Get first record
+                ];
+            }
+        }
     }
 
     public function collection()
     {
-        return collect($this->voteData);
+        return collect($this->kelurahanVoteData);
     }
 
-    public function map($vote): array
+    public function map($kelData): array
     {
         $row = [
             '', // No (akan diisi di headings)
-            $vote->kec_nama,
-            $vote->kel_nama,
-            $vote->jumlah_tps,
-            $vote->total_dpt ?? 0
+            $kelData['kelurahan_info']->nama_kelurahan,
+            $kelData['vote_data']->jumlah_tps,
+            $kelData['vote_data']->total_dpt ?? 0
         ];
 
         // Tambahkan suara per partai
         foreach ($this->parties as $party) {
-            $row[] = VoteData::getSuaraPartai($vote->chart, $party->nomor_urut);
+            $row[] = $this->getSuaraPartai($kelData['vote_data']->chart, $party->nomor_urut);
         }
 
         // Tambahkan total suara
         $totalSuara = 0;
         foreach ($this->parties as $party) {
-            $totalSuara += VoteData::getSuaraPartai($vote->chart, $party->nomor_urut);
+            $totalSuara += $this->getSuaraPartai($kelData['vote_data']->chart, $party->nomor_urut);
         }
         $row[] = $totalSuara;
 
@@ -63,7 +78,6 @@ class VoteDataExport implements FromCollection, WithHeadings, WithMapping, WithS
     {
         $headings = [
             'NO',
-            'KECAMATAN',
             'KELURAHAN/DESA',
             'JUMLAH TPS',
             'DPT'
@@ -118,21 +132,21 @@ class VoteDataExport implements FromCollection, WithHeadings, WithMapping, WithS
 
         // Center align numeric columns
         $sheet->getStyle('A2:A' . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('D2:' . $sheet->getHighestColumn() . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('C2:' . $sheet->getHighestColumn() . $lastRow)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
 
         // Tambahkan baris total
         $totalRow = $lastRow + 1;
 
         // Hitung total
-        $totalTPS = array_sum(array_column($this->voteData, 'jumlah_tps'));
-        $totalDPT = array_sum(array_map(function($vote) { return $vote->total_dpt ?? 0; }, $this->voteData));
+        $totalTPS = array_sum(array_map(function($kelData) { return $kelData['vote_data']->jumlah_tps; }, $this->kelurahanVoteData));
+        $totalDPT = array_sum(array_map(function($kelData) { return $kelData['vote_data']->total_dpt ?? 0; }, $this->kelurahanVoteData));
         $totalPerPartai = [];
         $grandTotal = 0;
 
         foreach ($this->parties as $party) {
             $total = 0;
-            foreach ($this->voteData as $vote) {
-                $total += VoteData::getSuaraPartai($vote->chart, $party->nomor_urut);
+            foreach ($this->kelurahanVoteData as $kelData) {
+                $total += $this->getSuaraPartai($kelData['vote_data']->chart, $party->nomor_urut);
             }
             $totalPerPartai[] = $total;
             $grandTotal += $total;
@@ -140,12 +154,11 @@ class VoteDataExport implements FromCollection, WithHeadings, WithMapping, WithS
 
         // Set nilai total
         $sheet->setCellValue('A' . $totalRow, '');
-        $sheet->setCellValue('B' . $totalRow, 'TOTAL ' . strtoupper($this->kabupatenName));
-        $sheet->setCellValue('C' . $totalRow, '');
-        $sheet->setCellValue('D' . $totalRow, $totalTPS);
-        $sheet->setCellValue('E' . $totalRow, $totalDPT);
+        $sheet->setCellValue('B' . $totalRow, 'TOTAL ' . strtoupper($this->kecamatanName));
+        $sheet->setCellValue('C' . $totalRow, $totalTPS);
+        $sheet->setCellValue('D' . $totalRow, $totalDPT);
 
-        $col = 'F';
+        $col = 'E';
         foreach ($totalPerPartai as $total) {
             $sheet->setCellValue($col . $totalRow, $total);
             $col++;
@@ -168,9 +181,6 @@ class VoteDataExport implements FromCollection, WithHeadings, WithMapping, WithS
             ]
         ]);
 
-        // Merge cells untuk total label
-        $sheet->mergeCells('B' . $totalRow . ':C' . $totalRow);
-
         // Tambahkan nomor urut
         for ($i = 2; $i <= $lastRow; $i++) {
             $sheet->setCellValue('A' . $i, $i - 1);
@@ -183,13 +193,20 @@ class VoteDataExport implements FromCollection, WithHeadings, WithMapping, WithS
     {
         return [
             'A' => NumberFormat::FORMAT_NUMBER,
+            'C' => NumberFormat::FORMAT_NUMBER,
             'D' => NumberFormat::FORMAT_NUMBER,
-            'E' => NumberFormat::FORMAT_NUMBER,
         ];
     }
 
     public function title(): string
     {
-        return 'Data Suara DPR RI - ' . $this->kabupatenName;
+        return 'Data Suara per Kelurahan - ' . $this->kecamatanName;
+    }
+
+    private function getSuaraPartai($chartJson, $partaiId)
+    {
+        if (empty($chartJson)) return 0;
+        $data = json_decode($chartJson, true);
+        return isset($data[$partaiId]['jml_suara_total']) ? $data[$partaiId]['jml_suara_total'] : 0;
     }
 }

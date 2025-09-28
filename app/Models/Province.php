@@ -97,16 +97,32 @@ class Province extends Model
 
     public static function getKecamatanDataWithStats($kabupatenId)
     {
-        // Simplified query without statistics to prevent timeouts
+        // Get kecamatan data with real statistics from pdpr_wil_kel table
         $kecamatan = DB::select("
-            SELECT DISTINCT
-                id,
-                COALESCE(NULLIF(nama, ''), kec_nama, 'Unknown') AS nama_kecamatan,
-                0 AS jumlah_kelurahan,
-                0 AS jumlah_tps
-            FROM pdpr_wil_kec
-            WHERE kab_id = ? AND ((nama IS NOT NULL AND nama != '') OR (kec_nama IS NOT NULL AND kec_nama != ''))
-            ORDER BY nama_kecamatan
+            SELECT
+                kec.id,
+                COALESCE(NULLIF(kec.nama, ''), kec.kec_nama, 'Unknown') AS nama_kecamatan,
+                COALESCE(kel_stats.jumlah_kelurahan, 0) as jumlah_kelurahan,
+                COALESCE(tps_stats.jumlah_tps, 0) as jumlah_tps,
+                COALESCE(kel_stats.total_dpt, 0) as total_dpt
+            FROM pdpr_wil_kec kec
+            LEFT JOIN (
+                SELECT
+                    kec_id,
+                    COUNT(*) as jumlah_kelurahan,
+                    SUM(total_dpt) as total_dpt
+                FROM pdpr_wil_kel
+                GROUP BY kec_id
+            ) kel_stats ON kec.id = kel_stats.kec_id
+            LEFT JOIN (
+                SELECT
+                    kec_id,
+                    COUNT(*) as jumlah_tps
+                FROM pdpr_wil_tps
+                GROUP BY kec_id
+            ) tps_stats ON kec.id = tps_stats.kec_id
+            WHERE kec.kab_id = ? AND ((kec.nama IS NOT NULL AND kec.nama != '') OR (kec.kec_nama IS NOT NULL AND kec.kec_nama != ''))
+            ORDER BY kec.nama
         ", [$kabupatenId]);
 
         return $kecamatan;

@@ -40,7 +40,9 @@
       "Bash(time mysql:*)",
       "Bash(timeout:*)",
       "Bash(top:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Read(//var/www/html/**)",
+      "WebFetch(domain:localhost)"
     ],
     "deny": [],
     "ask": []

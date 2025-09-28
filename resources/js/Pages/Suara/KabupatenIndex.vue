@@ -102,9 +102,6 @@
                                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200 bg-yellow-50">
                                     DPT
                                 </th>
-                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200 bg-red-50">
-                                    Suara Tidak Sah
-                                </th>
                                 <th v-for="party in parties" :key="party.nomor_urut"
                                     class="px-2 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200 bg-blue-50"
                                     style="writing-mode: vertical-rl; text-orientation: mixed; min-width: 50px;">
@@ -146,12 +143,7 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        {{ formatNumber(getDPTCount(vote.tbl)) }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                        {{ formatNumber(getSuaraTidakSah(vote.tbl)) }}
+                                        {{ formatNumber(vote.total_dpt) }}
                                     </span>
                                 </td>
                                 <td v-for="party in parties" :key="party.nomor_urut"
@@ -170,9 +162,6 @@
                                 </td>
                                 <td class="px-4 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
                                     {{ formatNumber(getTotalDPT()) }}
-                                </td>
-                                <td class="px-4 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
-                                    {{ formatNumber(getTotalSuaraTidakSah()) }}
                                 </td>
                                 <td v-for="party in parties" :key="party.nomor_urut"
                                     class="px-2 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
@@ -292,7 +281,7 @@ const statistics = computed(() => {
     const totalKelurahan = props.voteData.length;
     const totalPartai = props.parties.length;
     const totalDPT = getTotalDPT();
-    const totalTidakSah = getTotalSuaraTidakSah();
+    const totalSuara = grandTotal.value;
 
     return [
         {
@@ -314,61 +303,21 @@ const statistics = computed(() => {
             colorClass: 'bg-yellow-500'
         },
         {
-            label: 'Suara Tidak Sah',
-            value: totalTidakSah.toLocaleString('id-ID'),
+            label: 'Total Suara',
+            value: totalSuara.toLocaleString('id-ID'),
             icon: ChartIcon,
-            colorClass: 'bg-red-500'
+            colorClass: 'bg-green-500'
         }
     ]
 })
 
-const getDPTCount = (tblJson) => {
-    if (!tblJson) return 0;
-    try {
-        const data = JSON.parse(tblJson);
-        let total = 0;
-        Object.values(data).forEach(tpsData => {
-            if (tpsData && typeof tpsData === 'object' && tpsData.dpt) {
-                total += parseInt(tpsData.dpt) || 0;
-            }
-        });
-        return total;
-    } catch (e) {
-        return 0;
-    }
-}
-
-const getSuaraTidakSah = (tblJson) => {
-    if (!tblJson) return 0;
-    try {
-        const data = JSON.parse(tblJson);
-        let total = 0;
-        Object.values(data).forEach(tpsData => {
-            if (tpsData && typeof tpsData === 'object') {
-                if (tpsData.suara_tidak_sah) {
-                    total += parseInt(tpsData.suara_tidak_sah) || 0;
-                } else if (tpsData.tidak_sah) {
-                    total += parseInt(tpsData.tidak_sah) || 0;
-                }
-            }
-        });
-        return total;
-    } catch (e) {
-        return 0;
-    }
-}
 
 const getTotalDPT = () => {
     return props.voteData.reduce((sum, vote) => {
-        return sum + getDPTCount(vote.tbl);
+        return sum + parseInt(vote.total_dpt || 0);
     }, 0);
 }
 
-const getTotalSuaraTidakSah = () => {
-    return props.voteData.reduce((sum, vote) => {
-        return sum + getSuaraTidakSah(vote.tbl);
-    }, 0);
-}
 
 const formatNumber = (number) => {
     return parseInt(number || 0).toLocaleString('id-ID')

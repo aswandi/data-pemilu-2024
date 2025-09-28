@@ -37,3 +37,8 @@ Route::get('/dpr/kabupaten/{kabupatenId}/suara/export-excel', [ProvinceControlle
 Route::get('/dpr/kabupaten/{kabupatenId}/suara/caleg', [ProvinceController::class, 'suaraCalegKabupaten'])->name('dpr.suara.caleg.kabupaten');
 Route::get('/dpr/kelurahan/{kelurahanId}/caleg', [ProvinceController::class, 'suaraCaleg'])->name('dpr.suara.caleg');
 Route::get('/dpr/kecamatan/{kecamatanId}/kelurahan', [ProvinceController::class, 'kelurahan'])->name('dpr.kelurahan');
+Route::get('/dpr/kecamatan/{kecamatanId}/suara', [ProvinceController::class, 'suaraKecamatan'])->name('dpr.suara.kecamatan');
+Route::get('/dpr/kecamatan/{kecamatanId}/tps', [ProvinceController::class, 'tpsKecamatan'])->name('dpr.tps.kecamatan');
+Route::get('/dpr/kecamatan/{kecamatanId}/suara/export-excel', [ProvinceController::class, 'exportKecamatanSuaraExcel'])->name('dpr.suara.kecamatan.export.excel');
+Route::get('/dpr/kecamatan/{kecamatanId}/caleg-dapil/export-excel', [ProvinceController::class, 'exportKecamatanCalegByDapil'])->name('dpr.kecamatan.caleg.dapil.export.excel');
+Route::get('/dpr/kecamatan/{kecamatanId}/export-tps-excel', [ProvinceController::class, 'exportTpsExcel'])->name('dpr.tps.export.excel');
