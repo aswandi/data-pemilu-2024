@@ -181,8 +181,6 @@ Export data dengan:
 
 ## 📝 Changelog
 
-Lihat [Changelog](https://pemilucaleg2024.aplikasiweb.my.id/changelog) untuk detail perubahan dan fitur baru.
-
 ### Version 1.3.4 (5 Oktober 2025)
 - Export Excel data suara caleg per desa dengan visual enhancement
 - Header 4-row: Kecamatan → Kode Kec → Kode Desa → Nama Desa
@@ -212,7 +210,8 @@ Dikembangkan dengan ❤️ menggunakan Laravel, Vue.js, dan Inertia.js
 
 ---
 
-## 🔗 Links
+## 📞 Kontak
 
-- **Live Demo**: [https://pemilucaleg2024.aplikasiweb.my.id](https://pemilucaleg2024.aplikasiweb.my.id)
+- **WhatsApp**: [+62 811-945-222](https://wa.me/62811945222)
+- **Website**: [www.aswandi.or.id](https://www.aswandi.or.id)
 - **Repository**: [https://github.com/aswandi/data-pemilu-2024](https://github.com/aswandi/data-pemilu-2024)
