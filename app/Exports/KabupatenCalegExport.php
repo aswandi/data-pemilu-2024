@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\VoteData;
+use App\Models\Province;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -12,10 +13,9 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 
-class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
+class KabupatenCalegExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
 {
-    protected $kecamatanId;
-    protected $kecamatanName;
+    protected $kabupatenId;
     protected $kabupatenName;
     protected $provinceName;
     protected $kelurahanVoteData;
@@ -23,10 +23,9 @@ class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMappin
     protected $calegWithVotes;
     protected $partySummary;
 
-    public function __construct($kecamatanId, $kecamatanName, $kabupatenName, $provinceName)
+    public function __construct($kabupatenId, $kabupatenName, $provinceName)
     {
-        $this->kecamatanId = $kecamatanId;
-        $this->kecamatanName = $kecamatanName;
+        $this->kabupatenId = $kabupatenId;
         $this->kabupatenName = $kabupatenName;
         $this->provinceName = $provinceName;
 
@@ -38,17 +37,36 @@ class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMappin
 
     protected function loadKelurahanVoteData()
     {
-        // Get all kelurahan in this kecamatan - same as web
-        $kelurahanData = \App\Models\Province::getKelurahanDataWithStats($this->kecamatanId);
+        // Limit to first 20 kelurahan to prevent timeout
+        // Get all kecamatan in this kabupaten
+        $kecamatanData = Province::getKecamatanDataWithStats($this->kabupatenId);
 
         $this->kelurahanVoteData = collect();
-        foreach($kelurahanData as $kelurahan) {
-            $voteData = VoteData::getVoteDataByKelurahan($kelurahan->id);
-            if (!empty($voteData)) {
-                $this->kelurahanVoteData->push([
-                    'kelurahan_info' => $kelurahan,
-                    'vote_data' => $voteData[0]
-                ]);
+        $kelurahanCount = 0;
+        $maxKelurahan = 20; // Limit to prevent timeout
+
+        foreach($kecamatanData as $kecamatan) {
+            if ($kelurahanCount >= $maxKelurahan) {
+                break;
+            }
+
+            // Get all kelurahan in this kecamatan
+            $kelurahanData = Province::getKelurahanDataWithStats($kecamatan->id);
+
+            foreach($kelurahanData as $kelurahan) {
+                if ($kelurahanCount >= $maxKelurahan) {
+                    break;
+                }
+
+                $voteData = VoteData::getVoteDataByKelurahan($kelurahan->id);
+                if (!empty($voteData)) {
+                    $this->kelurahanVoteData->push([
+                        'kelurahan_info' => $kelurahan,
+                        'kecamatan_info' => $kecamatan,
+                        'vote_data' => $voteData[0]
+                    ]);
+                    $kelurahanCount++;
+                }
             }
         }
     }
@@ -75,10 +93,15 @@ class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMappin
                 }
             }
 
-            // Only include caleg with votes > 0 (as shown in web)
+            // Only include caleg with votes > 0
             if ($totalSuara > 0) {
                 $caleg->total_suara = $totalSuara;
                 $this->calegWithVotes->push($caleg);
+            }
+
+            // Limit candidates to prevent timeout
+            if ($this->calegWithVotes->count() >= 100) {
+                break;
             }
         }
 
@@ -176,7 +199,9 @@ class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMappin
 
         // Add kelurahan columns
         foreach($this->kelurahanVoteData as $kelData) {
-            $headings[] = $kelData['kelurahan_info']->nama_kelurahan;
+            $kelurahanName = $kelData['kelurahan_info']->nama_kelurahan;
+            $kecamatanName = $kelData['kecamatan_info']->nama_kecamatan;
+            $headings[] = $kelurahanName . "\n(" . $kecamatanName . ")";
         }
 
         return $headings;
@@ -269,7 +294,8 @@ class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMappin
                 ],
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER
+                    'vertical' => Alignment::VERTICAL_CENTER,
+                    'wrapText' => true
                 ],
                 'borders' => [
                     'allBorders' => [
@@ -326,6 +352,6 @@ class KecamatanCalegWebSheet implements FromCollection, WithHeadings, WithMappin
 
     public function title(): string
     {
-        return 'Data Suara Caleg per Kelurahan';
+        return 'Data Suara Caleg per Desa - ' . $this->kabupatenName;
     }
 }

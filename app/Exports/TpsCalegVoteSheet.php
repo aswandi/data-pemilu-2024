@@ -10,13 +10,15 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class TpsCalegVoteSheet implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
+class TpsCalegVoteSheet implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle, WithColumnFormatting
 {
     protected $kecamatanId;
     protected $kecamatanName;
@@ -103,6 +105,11 @@ class TpsCalegVoteSheet implements FromCollection, WithHeadings, WithMapping, Wi
             $partyCalegs = $this->calegData->where('partai_id', $party->nomor_urut); // Show all candidates
             $partyName = $party->partai_singkat ?? substr($party->nama, 0, 8);
 
+            // Add party vote column first
+            if ($partyCalegs->count() > 0) {
+                $headers[] = "Suara Partai\n{$partyName}";
+            }
+
             foreach ($partyCalegs as $caleg) {
                 // Format: Party Name\nNomor Urut\nNama Caleg
                 $headers[] = "{$partyName}\n{$caleg->nomor_urut}\n{$caleg->nama}";
@@ -134,14 +141,36 @@ class TpsCalegVoteSheet implements FromCollection, WithHeadings, WithMapping, Wi
         $tblData = json_decode($tps->caleg_vote_data, true) ?? [];
         $tpsCode = $this->getTpsCode($tps);
         $tpsVotes = isset($tblData[$tpsCode]) ? $tblData[$tpsCode] : [];
+
+        // Parse party vote data from chart column (from hs_dpr_ri_tps table)
+        $chartData = null;
+        if (!empty($tps->party_vote_data) && $tps->party_vote_data !== '""') {
+            $chartData = json_decode($tps->party_vote_data, true);
+        }
+
         $totalCalegVotes = 0;
 
         // Add ALL candidate vote columns for each party - filtered by dapil, show 0 if no votes
         foreach ($this->parties as $party) {
             $partyCalegs = $this->calegData->where('partai_id', $party->nomor_urut); // Show all candidates
+
+            // Add party vote column first
+            if ($partyCalegs->count() > 0) {
+                if ($chartData && isset($chartData[$party->nomor_urut]['jml_suara_partai'])) {
+                    $suaraPartai = intval($chartData[$party->nomor_urut]['jml_suara_partai']); // Show actual value including 0
+                } else {
+                    $suaraPartai = '-'; // Show dash if no data available
+                }
+                $row[] = $suaraPartai;
+            }
+
             foreach ($partyCalegs as $caleg) {
-                $suaraCaleg = isset($tpsVotes[$caleg->id]) ? intval($tpsVotes[$caleg->id]) : 0;
-                $row[] = $suaraCaleg; // Always show number, including 0
+                if (isset($tpsVotes[$caleg->id])) {
+                    $suaraCaleg = intval($tpsVotes[$caleg->id]); // Show actual value including 0
+                } else {
+                    $suaraCaleg = empty($tblData) ? '-' : 0; // Show dash if no TPS data, 0 if TPS data exists but no votes for this caleg
+                }
+                $row[] = $suaraCaleg;
             }
         }
 
@@ -155,11 +184,19 @@ class TpsCalegVoteSheet implements FromCollection, WithHeadings, WithMapping, Wi
 
         // Add summary columns
         $totalDpt = intval($tps->total_dpt ?? 0);
-        $partisipasi = $totalDpt > 0 ? round(($totalCalegVotes / $totalDpt) * 100, 2) : 0;
+
+        // Handle total and participation - show dash if no data
+        if (empty($tblData)) {
+            $totalCalegDisplay = '-';
+            $partisipasi = '-';
+        } else {
+            $totalCalegDisplay = $totalCalegVotes;
+            $partisipasi = $totalDpt > 0 ? round(($totalCalegVotes / $totalDpt) * 100, 2) . '%' : '0%';
+        }
 
         $row = array_merge($row, [
-            $totalCalegVotes,
-            $partisipasi . '%'
+            $totalCalegDisplay,
+            $partisipasi
         ]);
 
         return $row;
@@ -215,6 +252,56 @@ class TpsCalegVoteSheet implements FromCollection, WithHeadings, WithMapping, Wi
                 ]
             ]
         ];
+    }
+
+    public function columnFormats(): array
+    {
+        $formats = [
+            'A' => NumberFormat::FORMAT_NUMBER,
+            'C' => NumberFormat::FORMAT_NUMBER,
+            'E' => NumberFormat::FORMAT_NUMBER,
+        ];
+
+        // Helper function to increment Excel column letters properly
+        $getNextColumn = function($col) {
+            $length = strlen($col);
+            $col = strtoupper($col);
+            $col++;
+            return $col;
+        };
+
+        // Calculate starting column for vote data (after basic columns)
+        $currentColIndex = 5; // F is the 6th column (0-based: 5)
+
+        // Format party vote and candidate vote columns
+        foreach ($this->parties as $party) {
+            $partyCalegs = $this->calegData->where('partai_id', $party->nomor_urut);
+
+            // Party vote column format
+            if ($partyCalegs->count() > 0) {
+                $currentColIndex++;
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($currentColIndex);
+                $formats[$colLetter] = '0;-0;0;@'; // Custom format: positive;negative;zero;text
+            }
+
+            // Candidate vote columns format
+            foreach ($partyCalegs as $caleg) {
+                $currentColIndex++;
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($currentColIndex);
+                $formats[$colLetter] = '0;-0;0;@'; // Custom format: positive;negative;zero;text
+            }
+        }
+
+        // Format summary columns (Total Suara Caleg, Partisipasi)
+        $currentColIndex++;
+        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($currentColIndex);
+        $formats[$colLetter] = '0;-0;0;@'; // Total votes
+
+        $currentColIndex++;
+        $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($currentColIndex);
+        $formats[$colLetter] = '@'; // Participation percentage as text
+
+        return $formats;
     }
 
     public function title(): string

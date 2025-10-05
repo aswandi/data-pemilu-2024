@@ -11,6 +11,13 @@ use App\Exports\KecamatanMultiSheetExport;
 use App\Exports\KecamatanWebFormatExport;
 use App\Exports\KecamatanCalegByDapilExport;
 use App\Exports\TpsMultiSheetExport;
+use App\Exports\KabupatenCalegExport;
+use App\Exports\KabupatenCalegSummaryExport;
+use App\Exports\KabupatenTestExport;
+use App\Exports\KabupatenCalegMultiSheetExport;
+use App\Exports\KabupatenCalegPerDesaExport;
+use App\Exports\KabupatenCalegMultiDesaExport;
+use App\Exports\KabupatenCalegFromKecamatanExport;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -679,5 +686,56 @@ class ProvinceController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Export caleg by dapil failed: ' . $e->getMessage());
         }
+    }
+
+    public function exportKabupatenCalegExcel($kabupatenId)
+    {
+        try {
+            // Increase memory and time limits for large exports with ALL data
+            @ini_set('memory_limit', '6144M'); // Increased to 6GB
+            @ini_set('max_execution_time', '600');
+            @set_time_limit(600); // Increased to 10 minutes
+
+            // Disable output buffering to prevent memory issues
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            // Get kabupaten info
+            $kabupatenInfo = Province::getKabupatenInfo($kabupatenId);
+
+            // Generate filename
+            $filename = 'Data_Suara_Caleg_per_Desa_' . str_replace(' ', '_', $kabupatenInfo['kabupaten_name']) . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+
+            // Use export from hr_dpr_ri_kec (data per kecamatan with TPS votes)
+            return Excel::download(
+                new KabupatenCalegFromKecamatanExport($kabupatenId, $kabupatenInfo['kabupaten_name'], $kabupatenInfo['province_name']),
+                $filename
+            );
+        } catch (\Exception $e) {
+            \Log::error('Export kabupaten caleg failed', [
+                'kabupaten_id' => $kabupatenId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Try to create a simple fallback export with error info
+            try {
+                $fallbackFilename = 'Error_Export_Kabupaten_' . $kabupatenId . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+                return Excel::download(
+                    new KabupatenTestExport($kabupatenId, 'Error - Kabupaten ID: ' . $kabupatenId),
+                    $fallbackFilename
+                );
+            } catch (\Exception $fallbackException) {
+                return redirect()->back()->with('error', 'Export kabupaten caleg failed: ' . $e->getMessage());
+            }
+        }
+    }
+
+    public function changelog()
+    {
+        return Inertia::render('Changelog/Index', [
+            'title' => 'Changelog - Database Pemilu 2024'
+        ]);
     }
 }

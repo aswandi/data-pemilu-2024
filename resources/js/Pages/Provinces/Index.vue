@@ -18,7 +18,7 @@
             </div>
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                 <div
                     v-for="(stat, index) in statisticsCards"
                     :key="index"
@@ -242,12 +242,6 @@ const statisticsCards = computed(() => {
             value: stats.total_tps.toLocaleString('id-ID'),
             icon: UsersIcon,
             colorClass: 'bg-purple-500'
-        },
-        {
-            label: 'Total DPT',
-            value: stats.total_dpt.toLocaleString('id-ID'),
-            icon: UsersIcon,
-            colorClass: 'bg-red-500'
         }
     ]
 })

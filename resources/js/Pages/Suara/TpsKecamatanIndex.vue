@@ -153,15 +153,15 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600 border-r border-gray-200">
-                                    {{ tps.kelurahan_nama }}
+                                    {{ formatText(tps.kelurahan_nama) }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                        {{ tps.no_tps }}
+                                        {{ formatText(tps.no_tps) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200">
-                                    {{ tps.tps_nama }}
+                                    {{ formatText(tps.tps_nama) }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -325,7 +325,14 @@ const statistics = computed(() => {
 
 // Functions
 const formatNumber = (number) => {
-    return parseInt(number || 0).toLocaleString('id-ID')
+    // Only show dash if the number is null/undefined, not if it's 0
+    if (number === null || number === undefined) return '-'
+    const num = parseInt(number)
+    return isNaN(num) ? '-' : num.toLocaleString('id-ID')
+}
+
+const formatText = (text) => {
+    return text && typeof text === 'string' && text.trim() !== '' ? text : '-'
 }
 
 const getTpsCode = (tps) => {
@@ -342,26 +349,27 @@ const getTpsCode = (tps) => {
 
 // Function to get party votes from chart column
 const getSuaraPartaiFromChart = (chartJson, partaiId) => {
-    if (!chartJson) return 0
+    if (!chartJson || typeof chartJson !== 'string' || chartJson.trim() === '' || chartJson === '""') return '-'
     try {
         const data = JSON.parse(chartJson)
-        if (!data || !data[partaiId]) return 0
+        if (!data || !data[partaiId]) return '-'
 
+        // Return the actual value, including 0 - only return '-' if data doesn't exist
         return parseInt(data[partaiId].jml_suara_partai || 0)
     } catch (e) {
-        return 0
+        return '-'
     }
 }
 
 // Function to get total votes from tbl column for specific TPS
 const getTotalSuaraFromTbl = (tblJson, tpsCode) => {
-    if (!tblJson) return 0
+    if (!tblJson || typeof tblJson !== 'string' || tblJson.trim() === '' || tblJson === '""') return '-'
     try {
         const data = JSON.parse(tblJson)
-        if (!data || !data[tpsCode]) return 0
+        if (!data || !data[tpsCode]) return '-'
 
         const tpsData = data[tpsCode]
-        if (!tpsData || typeof tpsData !== 'object') return 0
+        if (!tpsData || typeof tpsData !== 'object') return '-'
 
         let total = 0
         Object.entries(tpsData).forEach(([calegId, votes]) => {
@@ -370,9 +378,10 @@ const getTotalSuaraFromTbl = (tblJson, tpsCode) => {
             }
         })
 
+        // Return the actual total, including 0 - only return '-' if data doesn't exist
         return total
     } catch (e) {
-        return 0
+        return '-'
     }
 }
 

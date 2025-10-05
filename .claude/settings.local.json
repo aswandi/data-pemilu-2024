@@ -42,7 +42,20 @@
       "Bash(top:*)",
       "Bash(cat:*)",
       "Read(//var/www/html/**)",
-      "WebFetch(domain:localhost)"
+      "WebFetch(domain:localhost)",
+      "Bash(claude --version)",
+      "Bash(bash)",
+      "Bash(~/.local/bin/claude --version)",
+      "Read(//var/log/apache2/**)",
+      "Read(//etc/**)",
+      "Bash(sudo sed:*)",
+      "Bash(sudo systemctl restart:*)",
+      "Bash(sudo systemctl status:*)",
+      "Bash(sudo nginx:*)",
+      "Bash(sudo systemctl:*)",
+      "Bash(python3:*)",
+      "Bash(unzip:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

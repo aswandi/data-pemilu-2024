@@ -91,10 +91,28 @@
                                     No
                                 </th>
                                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-left border-r border-gray-200">
+                                    Provinsi
+                                </th>
+                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200">
+                                    Kode Prov
+                                </th>
+                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-left border-r border-gray-200">
+                                    Kab/Kota
+                                </th>
+                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200">
+                                    Kode Kab
+                                </th>
+                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-left border-r border-gray-200">
                                     Kecamatan
+                                </th>
+                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200">
+                                    Kode Kec
                                 </th>
                                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-left border-r border-gray-200">
                                     Kelurahan/Desa
+                                </th>
+                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200">
+                                    Kode Desa
                                 </th>
                                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200">
                                     Jumlah TPS
@@ -130,11 +148,29 @@
                                         {{ index + 1 }}
                                     </span>
                                 </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-700 border-r border-gray-200">
+                                    {{ vote.pro_nama }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center border-r border-gray-200">
+                                    {{ vote.pro_kode }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-700 border-r border-gray-200">
+                                    {{ vote.kab_nama }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center border-r border-gray-200">
+                                    {{ vote.kab_kode }}
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 border-r border-gray-200">
                                     {{ vote.kec_nama }}
                                 </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center border-r border-gray-200">
+                                    {{ vote.kec_kode }}
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600 border-r border-gray-200">
                                     {{ vote.kel_nama }}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center border-r border-gray-200">
+                                    {{ vote.kel_kode }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
@@ -154,7 +190,7 @@
 
                             <!-- Total Row -->
                             <tr class="bg-green-100 font-bold border-t-2 border-green-300">
-                                <td colspan="3" class="px-4 py-4 text-sm font-bold text-gray-900 border-r border-gray-200">
+                                <td colspan="9" class="px-4 py-4 text-sm font-bold text-gray-900 border-r border-gray-200">
                                     TOTAL {{ kabupatenName.toUpperCase() }}
                                 </td>
                                 <td class="px-4 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">

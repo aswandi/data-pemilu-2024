@@ -27,7 +27,7 @@ class Province extends Model
                 COALESCE(p.jumlah_tps, 0) AS jumlah_tps,
                 COALESCE(p.total_dpt, 0) AS jumlah_dpt
             FROM pdpr_wil_pro p
-            WHERE (p.nama IS NOT NULL AND p.nama != '') OR (p.pro_nama IS NOT NULL AND p.pro_nama != '')
+            WHERE p.active = '1' AND ((p.nama IS NOT NULL AND p.nama != '') OR (p.pro_nama IS NOT NULL AND p.pro_nama != ''))
             ORDER BY p.pro_kode
         ");
 
@@ -155,21 +155,19 @@ class Province extends Model
 
     public static function getKelurahanDataWithStats($kecamatanId)
     {
-        // Get kelurahan for the specified kecamatan
+        // Get kelurahan with TPS and DPT statistics in a single optimized query
         $kelurahan = DB::select("
             SELECT DISTINCT
-                id,
-                COALESCE(NULLIF(nama, ''), kel_nama, 'Unknown') AS nama_kelurahan
-            FROM pdpr_wil_kel
-            WHERE kec_id = ? AND ((nama IS NOT NULL AND nama != '') OR (kel_nama IS NOT NULL AND kel_nama != ''))
+                k.id,
+                COALESCE(NULLIF(k.nama, ''), k.kel_nama, 'Unknown') AS nama_kelurahan,
+                COALESCE(COUNT(DISTINCT t.id), 0) AS jumlah_tps,
+                COALESCE(SUM(t.total_dpt), 0) AS jumlah_dpt
+            FROM pdpr_wil_kel k
+            LEFT JOIN pdpr_wil_tps t ON k.id = t.kel_id
+            WHERE k.kec_id = ? AND ((k.nama IS NOT NULL AND k.nama != '') OR (k.kel_nama IS NOT NULL AND k.kel_nama != ''))
+            GROUP BY k.id, k.nama, k.kel_nama
             ORDER BY nama_kelurahan
         ", [$kecamatanId]);
-
-        // Calculate real statistics for each kelurahan (optimized)
-        foreach ($kelurahan as $kel) {
-            // Skip TPS count for now as it causes timeouts - set to 0
-            $kel->jumlah_tps = 0;
-        }
 
         return $kelurahan;
     }
@@ -185,14 +183,24 @@ class Province extends Model
                 SUM(jumlah_tps) as total_tps,
                 SUM(total_dpt) as total_dpt
             FROM pdpr_wil_pro
-            WHERE (nama IS NOT NULL AND nama != '') OR (pro_nama IS NOT NULL AND pro_nama != '')
+            WHERE active = '1' AND ((nama IS NOT NULL AND nama != '') OR (pro_nama IS NOT NULL AND pro_nama != ''))
         ");
 
-        // Get total dapil (small table, safe to query)
-        $totalDapil = DB::selectOne("SELECT COUNT(DISTINCT id) as count FROM pdpr_wil_dapil");
+        // Get total dapil only from active provinces
+        $totalDapil = DB::selectOne("
+            SELECT COUNT(DISTINCT d.id) as count
+            FROM pdpr_wil_dapil d
+            INNER JOIN pdpr_wil_pro p ON d.pro_id = p.id
+            WHERE p.active = '1'
+        ");
 
-        // Get total kabupaten/kota (small table, safe to query)
-        $totalKabKota = DB::selectOne("SELECT COUNT(DISTINCT id) as count FROM pdpr_wil_kab");
+        // Get total kabupaten/kota only from active provinces
+        $totalKabKota = DB::selectOne("
+            SELECT COUNT(DISTINCT k.id) as count
+            FROM pdpr_wil_kab k
+            INNER JOIN pdpr_wil_pro p ON k.pro_id = p.id
+            WHERE p.active = '1'
+        ");
 
         return [
             'total_provinces' => $totals->total_provinces ?? 0,

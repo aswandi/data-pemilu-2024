@@ -115,9 +115,6 @@
                                 <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200 bg-green-50">
                                     Total Suara
                                 </th>
-                                <th class="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center border-r border-gray-200 bg-indigo-50">
-                                    Suara per TPS
-                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -163,15 +160,6 @@
                                         {{ formatNumber(getTotalSuaraKelurahan(kelData.vote_data.chart)) }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    <button @click="toggleTpsData(kelData)"
-                                            class="inline-flex items-center px-3 py-1 rounded-md text-xs font-medium bg-indigo-100 text-indigo-800 hover:bg-indigo-200 transition-colors duration-200">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                        </svg>
-                                        Lihat TPS ({{ kelData.tps_data ? kelData.tps_data.length : 0 }})
-                                    </button>
-                                </td>
                             </tr>
 
                             <!-- Total Row -->
@@ -191,9 +179,6 @@
                                 </td>
                                 <td class="px-4 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
                                     {{ formatNumber(grandTotalSuara) }}
-                                </td>
-                                <td class="px-4 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
-                                    -
                                 </td>
                             </tr>
 
@@ -306,82 +291,151 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <tr
-                                v-for="(caleg, index) in calegWithVotes"
-                                :key="caleg.id"
-                                :class="[
-                                    caleg.is_party_row
-                                        ? 'bg-orange-50 font-bold border-l-4 border-orange-400'
-                                        : 'hover:bg-gray-50 transition-colors duration-200'
-                                ]"
-                            >
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 font-semibold text-xs">
-                                        {{ index + 1 }}
-                                    </span>
+                            <template v-for="(party, partyIndex) in groupedCalegByParty" :key="`party-${party.partai_id}`">
+                                <!-- Party Header Row -->
+                                <tr class="bg-orange-50 font-bold border-l-4 border-orange-400">
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 font-semibold text-xs">
+                                            P{{ party.partai_id }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ party.partai_id }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium border-r border-gray-200 text-orange-700 bg-orange-100">
+                                        {{ getPartaiName(party.partai_id) }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
+                                            PARTAI
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 text-left text-gray-700 italic">
+                                        Suara Partai (tanpa caleg)
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        -
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
+                                            {{ formatNumber(getTotalSuaraPartaiSaja(party.partai_id)) }}
+                                        </span>
+                                    </td>
+                                    <template v-if="!showTpsInCalegTable">
+                                        <td v-for="kelData in kelurahanVoteData" :key="`party-kel-${kelData.kelurahan_info.id}`"
+                                            class="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200 bg-orange-100">
+                                            {{ formatNumber(getSuaraPartaiSaja(kelData.vote_data.chart, party.partai_id)) }}
+                                        </td>
+                                    </template>
+                                    <template v-else>
+                                        <template v-for="kelData in kelurahanVoteData" :key="`party-kel-data-${kelData.kelurahan_info.id}`">
+                                            <td v-for="tps in kelData.tps_data" :key="`party-tps-${tps.id}`"
+                                                class="px-1 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200 bg-orange-100">
+                                                {{ formatNumber(getSuaraPartaiPerTps(kelData.vote_data.tbl, getTpsCode(tps), party.partai_id)) }}
+                                            </td>
+                                        </template>
+                                    </template>
+                                </tr>
+
+                                <!-- Candidate Rows -->
+                                <tr
+                                    v-for="(caleg, calegIndex) in party.candidates"
+                                    :key="caleg.id"
+                                    class="hover:bg-gray-50 transition-colors duration-200"
+                                >
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-100 text-indigo-600 font-semibold text-xs">
+                                            {{ caleg.nomor_urut }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {{ caleg.partai_id }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium border-r border-gray-200 text-blue-600">
+                                        {{ getPartaiName(caleg.partai_id) }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ caleg.nomor_urut }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200 text-left text-gray-900">
+                                        {{ caleg.nama }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        {{ caleg.jenis_kelamin }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            {{ formatNumber(caleg.total_suara) }}
+                                        </span>
+                                    </td>
+                                    <template v-if="!showTpsInCalegTable">
+                                        <td v-for="kelData in kelurahanVoteData" :key="`caleg-kel-${kelData.kelurahan_info.id}`"
+                                            class="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                            {{ formatNumber(getSuaraCalegPerKelurahan(kelData.vote_data.tbl, caleg.id)) }}
+                                        </td>
+                                    </template>
+                                    <template v-else>
+                                        <template v-for="kelData in kelurahanVoteData" :key="`caleg-kel-data-${kelData.kelurahan_info.id}`">
+                                            <td v-for="tps in kelData.tps_data" :key="`caleg-tps-${tps.id}`"
+                                                class="px-1 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
+                                                {{ formatNumber(getSuaraCalegPerTpsDetail(kelData.vote_data.tbl, getTpsCode(tps), caleg.id)) }}
+                                            </td>
+                                        </template>
+                                    </template>
+                                </tr>
+
+                                <!-- Party Subtotal Row -->
+                                <tr class="bg-blue-100 font-semibold border-t border-blue-300">
+                                    <td colspan="6" class="px-4 py-3 text-sm font-semibold text-gray-900 border-r border-gray-200">
+                                        SUBTOTAL {{ getPartaiName(party.partai_id).toUpperCase() }}
+                                    </td>
+                                    <td class="px-4 py-3 text-sm font-semibold text-gray-900 text-center border-r border-gray-200">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-200 text-blue-800">
+                                            {{ formatNumber(getPartyTotalVotes(party.partai_id)) }}
+                                        </span>
+                                    </td>
+                                    <template v-if="!showTpsInCalegTable">
+                                        <td v-for="kelData in kelurahanVoteData" :key="`subtotal-kel-${kelData.kelurahan_info.id}`"
+                                            class="px-2 py-3 text-sm font-semibold text-gray-900 text-center border-r border-gray-200">
+                                            {{ formatNumber(getPartyTotalPerKelurahan(party.partai_id, kelData)) }}
+                                        </td>
+                                    </template>
+                                    <template v-else>
+                                        <template v-for="kelData in kelurahanVoteData" :key="`subtotal-kel-data-${kelData.kelurahan_info.id}`">
+                                            <td v-for="tps in kelData.tps_data" :key="`subtotal-tps-${tps.id}`"
+                                                class="px-1 py-3 text-sm font-semibold text-gray-900 text-center border-r border-gray-200">
+                                                {{ formatNumber(getPartyTotalPerTps(party.partai_id, kelData, tps)) }}
+                                            </td>
+                                        </template>
+                                    </template>
+                                </tr>
+                            </template>
+
+                            <!-- Total Row for Caleg Table -->
+                            <tr class="bg-green-100 font-bold border-t-2 border-green-300">
+                                <td colspan="6" class="px-4 py-4 text-sm font-bold text-gray-900 border-r border-gray-200">
+                                    TOTAL {{ kecamatanName.toUpperCase() }}
                                 </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                        {{ caleg.partai_id }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium border-r border-gray-200"
-                                    :class="caleg.is_party_row ? 'text-orange-700 bg-orange-100' : 'text-blue-600'">
-                                    {{ getPartaiName(caleg.partai_id) }}
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    <span v-if="caleg.is_party_row"
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
-                                        {{ caleg.nomor_urut }}
-                                    </span>
-                                    <span v-else
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                        {{ caleg.nomor_urut }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm border-r border-gray-200"
-                                    :class="[
-                                        'text-left',
-                                        caleg.is_party_row ? 'text-gray-700 italic' : 'text-gray-900'
-                                    ]">
-                                    {{ caleg.nama }}
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    {{ caleg.jenis_kelamin }}
-                                </td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200">
-                                    <span v-if="caleg.is_party_row"
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-200 text-orange-800">
-                                        {{ formatNumber(getTotalSuaraPartaiSaja(caleg.partai_id)) }}
-                                    </span>
-                                    <span v-else
-                                        class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        {{ formatNumber(caleg.total_suara) }}
-                                    </span>
+                                <td class="px-4 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
+                                    {{ formatNumber(getGrandTotalSuaraCaleg) }}
                                 </td>
                                 <template v-if="!showTpsInCalegTable">
-                                    <td v-for="kelData in kelurahanVoteData" :key="kelData.kelurahan_info.id"
-                                        class="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200"
-                                        :class="caleg.is_party_row ? 'bg-orange-100' : ''">
-                                        <span v-if="caleg.is_party_row">
-                                            {{ formatNumber(getSuaraPartaiSaja(kelData.vote_data.chart, caleg.partai_id)) }}
-                                        </span>
-                                        <span v-else>
-                                            {{ formatNumber(getSuaraCalegPerKelurahan(kelData.vote_data.tbl, caleg.id)) }}
-                                        </span>
+                                    <td v-for="kelData in kelurahanVoteData" :key="`total-kel-${kelData.kelurahan_info.id}`"
+                                        class="px-2 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
+                                        {{ formatNumber(Object.values(getSuaraCaleg(kelData.vote_data.tbl)).reduce((sum, votes) => sum + votes, 0)) }}
                                     </td>
                                 </template>
                                 <template v-else>
-                                    <template v-for="kelData in kelurahanVoteData" :key="`kel-data-${kelData.kelurahan_info.id}`">
-                                        <td v-for="tps in kelData.tps_data" :key="`tps-data-${tps.id}`"
-                                            class="px-1 py-3 whitespace-nowrap text-sm text-gray-900 text-center border-r border-gray-200"
-                                            :class="caleg.is_party_row ? 'bg-orange-100' : ''">
-                                            <span v-if="caleg.is_party_row">
-                                                {{ formatNumber(getSuaraPartaiPerTps(kelData.vote_data.tbl, getTpsCode(tps), caleg.partai_id)) }}
-                                            </span>
-                                            <span v-else>
-                                                {{ formatNumber(getSuaraCalegPerTpsDetail(kelData.vote_data.tbl, getTpsCode(tps), caleg.id)) }}
-                                            </span>
+                                    <template v-for="kelData in kelurahanVoteData" :key="`total-kel-data-${kelData.kelurahan_info.id}`">
+                                        <td v-for="tps in kelData.tps_data" :key="`total-tps-${tps.id}`"
+                                            class="px-1 py-4 text-sm font-bold text-gray-900 text-center border-r border-gray-200">
+                                            {{ formatNumber(getTotalSuaraTps(kelData.vote_data.tbl, getTpsCode(tps))) }}
                                         </td>
                                     </template>
                                 </template>
@@ -670,5 +724,111 @@ const getSuaraCalegPerTpsDetail = (tblJson, tpsCode, calegId) => {
     } catch (e) {
         return 0
     }
+}
+
+// Total functions for caleg table
+const getTotalSuaraPerKelurahan = (kelData) => {
+    if (showTpsInCalegTable.value) {
+        // When showing TPS details, sum all TPS in this kelurahan
+        let total = 0
+        if (kelData.tps_data) {
+            kelData.tps_data.forEach(tps => {
+                total += getTotalSuaraTps(kelData.vote_data.tbl, getTpsCode(tps))
+            })
+        }
+        return total
+    } else {
+        // When showing per kelurahan, use kelurahan total
+        return getSuaraCaleg(kelData.vote_data.tbl)
+    }
+}
+
+const getTotalSuaraPerTps = (kelData, tps) => {
+    return getTotalSuaraTps(kelData.vote_data.tbl, getTpsCode(tps))
+}
+
+const getGrandTotalSuaraCaleg = computed(() => {
+    let total = 0
+    calegWithVotes.value.forEach(caleg => {
+        if (!caleg.is_party_row && caleg.total_suara) {
+            total += parseInt(caleg.total_suara)
+        }
+    })
+    return total
+})
+
+// Group candidates by party for new structure
+const groupedCalegByParty = computed(() => {
+    const groups = []
+    const partiesMap = new Map()
+
+    // Group caleg by party, excluding party rows
+    calegWithVotes.value.forEach(caleg => {
+        if (!caleg.is_party_row) {
+            if (!partiesMap.has(caleg.partai_id)) {
+                partiesMap.set(caleg.partai_id, {
+                    partai_id: caleg.partai_id,
+                    candidates: []
+                })
+            }
+            partiesMap.get(caleg.partai_id).candidates.push(caleg)
+        }
+    })
+
+    // Sort parties by partai_id and sort candidates within each party
+    Array.from(partiesMap.values())
+        .sort((a, b) => a.partai_id - b.partai_id)
+        .forEach(party => {
+            party.candidates.sort((a, b) => a.nomor_urut - b.nomor_urut)
+            groups.push(party)
+        })
+
+    return groups
+})
+
+// Functions for party subtotals
+const getPartyTotalVotes = (partaiId) => {
+    let total = 0
+    // Include both party votes (tanpa caleg) and candidate votes
+    total += getTotalSuaraPartaiSaja(partaiId) // Party votes without candidates
+
+    // Add candidate votes for this party
+    calegWithVotes.value.forEach(caleg => {
+        if (!caleg.is_party_row && caleg.partai_id == partaiId && caleg.total_suara) {
+            total += parseInt(caleg.total_suara)
+        }
+    })
+
+    return total
+}
+
+const getPartyTotalPerKelurahan = (partaiId, kelData) => {
+    let total = 0
+    // Add party votes without candidates
+    total += getSuaraPartaiSaja(kelData.vote_data.chart, partaiId)
+
+    // Add candidate votes for this party in this kelurahan
+    calegWithVotes.value.forEach(caleg => {
+        if (!caleg.is_party_row && caleg.partai_id == partaiId) {
+            total += getSuaraCalegPerKelurahan(kelData.vote_data.tbl, caleg.id)
+        }
+    })
+
+    return total
+}
+
+const getPartyTotalPerTps = (partaiId, kelData, tps) => {
+    let total = 0
+    // Add party votes without candidates for this TPS
+    total += getSuaraPartaiPerTps(kelData.vote_data.tbl, getTpsCode(tps), partaiId)
+
+    // Add candidate votes for this party in this TPS
+    calegWithVotes.value.forEach(caleg => {
+        if (!caleg.is_party_row && caleg.partai_id == partaiId) {
+            total += getSuaraCalegPerTpsDetail(kelData.vote_data.tbl, getTpsCode(tps), caleg.id)
+        }
+    })
+
+    return total
 }
 </script>

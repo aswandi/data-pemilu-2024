@@ -14,8 +14,14 @@ class VoteData extends Model
         // Optimized query using subquery for TPS count to avoid expensive LEFT JOIN
         $query = "
             SELECT
+                pro.nama as pro_nama,
+                pro.pro_kode,
+                kab.nama as kab_nama,
+                kab.kab_kode,
                 k.nama as kec_nama,
+                k.kec_kode,
                 kel.nama as kel_nama,
+                kel.kel_kode,
                 kel.id as kel_id,
                 hr.chart,
                 hr.tbl,
@@ -25,6 +31,8 @@ class VoteData extends Model
             FROM hr_dpr_ri_kel hr
             JOIN pdpr_wil_kel kel ON hr.kel_id = kel.id
             JOIN pdpr_wil_kec k ON kel.kec_id = k.id
+            JOIN pdpr_wil_kab kab ON k.kab_id = kab.id
+            JOIN pdpr_wil_pro pro ON kab.pro_id = pro.id
             LEFT JOIN (
                 SELECT kel_id, COUNT(id) as jumlah_tps
                 FROM pdpr_wil_tps
@@ -107,11 +115,136 @@ class VoteData extends Model
                 nama,
                 nomor_urut,
                 jenis_kelamin,
-                partai_id
+                partai_id,
+                dapil_id,
+                dapil_nama
             FROM dpr_ri_caleg
             ORDER BY partai_id, nomor_urut
         ";
         return DB::select($query);
+    }
+
+    public static function getCalegDataByDapil($dapilIds = null)
+    {
+        $query = "
+            SELECT
+                id,
+                nama,
+                nomor_urut,
+                jenis_kelamin,
+                partai_id,
+                dapil_id,
+                dapil_nama
+            FROM dpr_ri_caleg
+            WHERE dapil_id IS NOT NULL
+        ";
+
+        $params = [];
+        if ($dapilIds && !empty($dapilIds)) {
+            $placeholders = implode(',', array_fill(0, count($dapilIds), '?'));
+            $query .= " AND dapil_id IN ($placeholders)";
+            $params = $dapilIds;
+        }
+
+        $query .= " ORDER BY dapil_id, partai_id, nomor_urut";
+
+        return DB::select($query, $params);
+    }
+
+    public static function getDapilByKabupatenFromHR($kabupatenId)
+    {
+        // Get dapil from hr_dpr_ri_kel table (most accurate source)
+        $query = "
+            SELECT DISTINCT dapil_id, dapil_nama
+            FROM hr_dpr_ri_kel
+            WHERE kab_id = ?
+            LIMIT 1
+        ";
+
+        $result = DB::select($query, [$kabupatenId]);
+        return $result;
+    }
+
+    public static function getDapilByKabupaten($kabupatenId)
+    {
+        // Get kabupaten name first
+        $kabupatenInfo = DB::selectOne("SELECT nama FROM pdpr_wil_kab WHERE id = ?", [$kabupatenId]);
+        if (!$kabupatenInfo) {
+            return [];
+        }
+
+        $kabupatenName = $kabupatenInfo->nama;
+
+        // Try to find exact dapil mapping first using specific kabupaten rules
+        $dapilId = null;
+
+        // Specific mappings for multi-dapil provinces/regions
+        if (strpos($kabupatenName, 'PALEMBANG') !== false || strpos($kabupatenName, 'OGAN KOMERING ULU') !== false || strpos($kabupatenName, 'MUARA ENIM') !== false) {
+            $dapilId = 7637; // SUMATERA SELATAN I
+        } elseif (strpos($kabupatenName, 'LUBUK LINGGAU') !== false || strpos($kabupatenName, 'OGAN KOMERING ILIR') !== false || strpos($kabupatenName, 'OGAN ILIR') !== false) {
+            $dapilId = 7638; // SUMATERA SELATAN II
+        }
+
+        // If we have specific dapil ID, return it
+        if ($dapilId) {
+            $result = DB::select("SELECT dapil_id, dapil_nama FROM dpr_ri_caleg WHERE dapil_id = ? LIMIT 1", [$dapilId]);
+            if (!empty($result)) {
+                return $result;
+            }
+        }
+
+        // Fallback to general regional matching (take first result only)
+        $query = "
+            SELECT DISTINCT dapil_id, dapil_nama
+            FROM dpr_ri_caleg
+            WHERE dapil_nama IS NOT NULL
+            AND (
+                dapil_nama LIKE ? OR
+                dapil_nama LIKE ? OR
+                dapil_nama LIKE ?
+            )
+            ORDER BY dapil_id
+            LIMIT 1
+        ";
+
+        // Extract province/region from kabupaten name for matching
+        $regionPatterns = [];
+        if (strpos($kabupatenName, 'ACEH') !== false || strpos($kabupatenName, 'BANDA ACEH') !== false) {
+            $regionPatterns = ['%ACEH I%', '%ACEH%', '%ACEH%'];
+        } elseif (strpos($kabupatenName, 'SUMATERA UTARA') !== false || strpos($kabupatenName, 'MEDAN') !== false) {
+            $regionPatterns = ['%SUMATERA UTARA I%', '%SUMATERA UTARA%', '%SUMATERA UTARA%'];
+        } elseif (strpos($kabupatenName, 'SUMATERA BARAT') !== false || strpos($kabupatenName, 'PADANG') !== false) {
+            $regionPatterns = ['%SUMATERA BARAT I%', '%SUMATERA BARAT%', '%SUMATERA BARAT%'];
+        } elseif (strpos($kabupatenName, 'RIAU') !== false || strpos($kabupatenName, 'PEKANBARU') !== false) {
+            $regionPatterns = ['%RIAU I%', '%RIAU%', '%RIAU%'];
+        } elseif (strpos($kabupatenName, 'JAMBI') !== false) {
+            $regionPatterns = ['%JAMBI%', '%JAMBI%', '%JAMBI%'];
+        } elseif (strpos($kabupatenName, 'SUMATERA SELATAN') !== false || strpos($kabupatenName, 'PALEMBANG') !== false || strpos($kabupatenName, 'LUBUK LINGGAU') !== false) {
+            $regionPatterns = ['%SUMATERA SELATAN I%', '%SUMATERA SELATAN%', '%SUMATERA SELATAN%'];
+        } elseif (strpos($kabupatenName, 'BENGKULU') !== false) {
+            $regionPatterns = ['%BENGKULU%', '%BENGKULU%', '%BENGKULU%'];
+        } elseif (strpos($kabupatenName, 'LAMPUNG') !== false || strpos($kabupatenName, 'BANDAR LAMPUNG') !== false) {
+            $regionPatterns = ['%LAMPUNG%', '%LAMPUNG%', '%LAMPUNG%'];
+        } elseif (strpos($kabupatenName, 'JAKARTA') !== false || strpos($kabupatenName, 'DKI') !== false) {
+            $regionPatterns = ['%JAKARTA I%', '%JAKARTA%', '%DKI%'];
+        } elseif (strpos($kabupatenName, 'JAWA BARAT') !== false || strpos($kabupatenName, 'BANDUNG') !== false || strpos($kabupatenName, 'BOGOR') !== false) {
+            $regionPatterns = ['%JAWA BARAT I%', '%JAWA BARAT%', '%JAWA BARAT%'];
+        } elseif (strpos($kabupatenName, 'JAWA TENGAH') !== false || strpos($kabupatenName, 'SEMARANG') !== false) {
+            $regionPatterns = ['%JAWA TENGAH I%', '%JAWA TENGAH%', '%JAWA TENGAH%'];
+        } elseif (strpos($kabupatenName, 'YOGYAKARTA') !== false || strpos($kabupatenName, 'YOGYA') !== false) {
+            $regionPatterns = ['%YOGYAKARTA%', '%YOGYA%', '%YOGYAKARTA%'];
+        } elseif (strpos($kabupatenName, 'JAWA TIMUR') !== false || strpos($kabupatenName, 'SURABAYA') !== false) {
+            $regionPatterns = ['%JAWA TIMUR I%', '%JAWA TIMUR%', '%JAWA TIMUR%'];
+        } elseif (strpos($kabupatenName, 'BANTEN') !== false) {
+            $regionPatterns = ['%BANTEN%', '%BANTEN%', '%BANTEN%'];
+        } elseif (strpos($kabupatenName, 'BALI') !== false || strpos($kabupatenName, 'DENPASAR') !== false) {
+            $regionPatterns = ['%BALI%', '%BALI%', '%BALI%'];
+        } else {
+            // Default fallback
+            $regionPatterns = ['%' . strtoupper($kabupatenName) . '%', '%%', '%%'];
+        }
+
+        return DB::select($query, $regionPatterns);
     }
 
     public static function getVoteDataByKelurahan($kelurahanId)
@@ -346,24 +479,33 @@ class VoteData extends Model
 
     public static function getTpsDataWithVotesKecamatan($kecamatanId)
     {
-        // Get TPS data with vote data from hr_dpr_ri_kel table
+        // Get TPS data with vote data from hs_dpr_ri_tps table (faster access)
         $query = "
             SELECT
                 tps.id,
                 tps.tps_nama,
                 tps.no_tps,
                 tps.total_dpt,
+                pro.nama as provinsi_nama,
+                pro.pro_kode,
+                kab.nama as kabupaten_nama,
+                kab.kab_kode,
+                kec.nama as kecamatan_nama,
+                kec.kec_kode,
                 kel.nama as kelurahan_nama,
                 kel.id as kelurahan_id,
                 kel.kel_kode,
-                hr.chart as party_vote_data,
+                hs.chart as party_vote_data,
                 hr.tbl as caleg_vote_data
             FROM pdpr_wil_tps tps
             JOIN pdpr_wil_kel kel ON tps.kel_id = kel.id
+            JOIN pdpr_wil_kec kec ON kel.kec_id = kec.id
+            JOIN pdpr_wil_kab kab ON kec.kab_id = kab.id
+            JOIN pdpr_wil_pro pro ON kab.pro_id = pro.id
+            LEFT JOIN hs_dpr_ri_tps hs ON hs.tps_id = tps.id
             LEFT JOIN hr_dpr_ri_kel hr ON hr.kel_id = kel.id
             WHERE kel.kec_id = ?
             ORDER BY kel.nama, tps.no_tps
-            LIMIT 100
         ";
 
         return DB::select($query, [$kecamatanId]);

@@ -45,7 +45,7 @@
             </div>
 
             <!-- Statistics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div
                     v-for="(stat, index) in statistics"
                     :key="index"
@@ -100,6 +100,9 @@
                                 <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Jumlah TPS
                                 </th>
+                                <th class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Jumlah DPT
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
@@ -129,6 +132,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                         {{ formatNumber(kel.jumlah_tps) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        {{ formatNumber(kel.jumlah_dpt) }}
                                     </span>
                                 </td>
                             </tr>
@@ -167,6 +175,10 @@ const UsersIcon = {
     template: `<svg fill="currentColor" viewBox="0 0 20 20"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path></svg>`
 }
 
+const ChartIcon = {
+    template: `<svg fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>`
+}
+
 const props = defineProps({
     kelurahan: Array,
     kecamatanName: String,
@@ -179,7 +191,8 @@ const props = defineProps({
 })
 
 const statistics = computed(() => {
-    const totalTPS = props.kelurahan.reduce((sum, k) => sum + parseInt(k.jumlah_tps), 0)
+    const totalTPS = props.kelurahan.reduce((sum, k) => sum + parseInt(k.jumlah_tps || 0), 0)
+    const totalDPT = props.kelurahan.reduce((sum, k) => sum + parseInt(k.jumlah_dpt || 0), 0)
 
     return [
         {
@@ -193,6 +206,12 @@ const statistics = computed(() => {
             value: totalTPS.toLocaleString('id-ID'),
             icon: UsersIcon,
             colorClass: 'bg-purple-500'
+        },
+        {
+            label: 'Total DPT',
+            value: totalDPT.toLocaleString('id-ID'),
+            icon: ChartIcon,
+            colorClass: 'bg-green-500'
         }
     ]
 })
