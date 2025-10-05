@@ -1,58 +1,218 @@
-# Data Pemilu 2024
+# Database Pemilu 2024
 
-This project is a web application for managing and displaying data from the 2024 Indonesian general election.
+<div align="center">
+  <h3>Sistem Informasi Data Pemilihan Umum Indonesia 2024</h3>
+  <p>Web aplikasi untuk menampilkan dan mengelola data pemilihan umum DPR RI tahun 2024</p>
 
-## Features
+  [![Laravel](https://img.shields.io/badge/Laravel-11%2F12-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com)
+  [![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D?style=flat&logo=vue.js&logoColor=white)](https://vuejs.org)
+  [![Inertia.js](https://img.shields.io/badge/Inertia.js-SPA-9553E9?style=flat)](https://inertiajs.com)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+</div>
 
-*   View election data by province, regency, district, and village.
-*   View detailed information about polling places (TPS).
-*   View the final voters list (DPT).
-*   Export vote data to Excel.
+---
 
-## Installation
+## 📸 Screenshots
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/aswandi/data-pemilu-2024.git
-    ```
-2.  Install dependencies:
-    ```bash
-    composer install
-    npm install
-    ```
-3.  Create a copy of the `.env.example` file and name it `.env`.
-4.  Generate an application key:
-    ```bash
-    php artisan key:generate
-    ```
-5.  Configure your database in the `.env` file.
-6.  Run the database migrations:
-    ```bash
-    php artisan migrate
-    ```
-7.  Start the development server:
-    ```bash
-    php artisan serve
-    ```
+### 1. Halaman Utama - Data Provinsi
+![Homepage - Data Provinsi](docs/screenshots/01-homepage-provinces.png)
+*Menampilkan data 38 provinsi aktif dengan statistik lengkap: Total Kab/Kota, Kecamatan, Kelurahan/Desa, TPS, dan Total DPT*
 
-## Database
+### 2. Halaman Data Kabupaten/Kota
+![Data Kabupaten](docs/screenshots/02-kabupaten-data.png)
+*Detail data kabupaten/kota per provinsi dengan tombol export dan lihat suara*
 
-The database schema is defined in the `database/migrations` directory. The main tables are:
+### 3. Export Excel - Data Suara DPR per TPS
+![Excel Export - Suara DPR](docs/screenshots/03-excel-export-suara-dpr.png)
+*Export data suara DPR RI per TPS dengan detail lengkap per kelurahan/desa*
 
-*   `provinces`: Provinces in Indonesia.
-*   `regencies`: Regencies in Indonesia.
-*   `districts`: Districts in Indonesia.
-*   `villages`: Villages in Indonesia.
-*   `tps`: Polling places.
-*   `dpt`: Final voters list.
-*   `vote_data`: Vote data.
+### 4. Export Excel - Data Suara Caleg per Desa
+![Excel Export - Caleg per Desa](docs/screenshots/04-excel-export-caleg-per-desa.png)
+*Export data suara caleg dengan breakdown per desa, multi-sheet, dan warna highlight untuk baris PARTAI*
 
-## API
+---
 
-The API endpoints are defined in the `routes/api.php` file. The available endpoints are:
+## ✨ Fitur Utama
 
-*   `/api/provinces`: Get a list of provinces.
-*   `/api/regencies/{province_id}`: Get a list of regencies in a province.
-*   `/api/districts/{regency_id}`: Get a list of districts in a regency.
-*   `/api/villages/{district_id}`: Get a list of villages in a district.
-*   `/api/tps/{village_id}`: Get a list of polling places in a village.
+### 📊 Tampilan Data
+- **Data Hierarki Wilayah**: Provinsi → Kabupaten/Kota → Kecamatan → Kelurahan/Desa → TPS
+- **Statistik Real-time**: Jumlah TPS, DPT, Kecamatan, dan Kelurahan per wilayah
+- **Filter Data Aktif**: Hanya menampilkan 38 provinsi aktif (tanpa "Luar Negeri")
+- **Navigasi Breadcrumb**: Kemudahan navigasi antar halaman
+- **Responsive Design**: Tampilan optimal di desktop, tablet, dan mobile
+
+### 📥 Export Excel
+- **Export Data Suara DPR**: Data suara per kabupaten dengan multi-sheet
+- **Export Data Caleg per Desa**:
+  - Data suara caleg dengan granularitas per desa/kelurahan
+  - Header 4-row: Kecamatan → Kode Kecamatan → Kode Desa → Nama Desa
+  - Auto-split multi-sheet (50 desa per sheet)
+  - Warna highlight untuk baris PARTAI dan TOTAL
+  - Format angka dengan ribuan separator
+  - Freeze panes untuk navigasi optimal
+- **Export Data TPS**: Data suara per TPS dengan detail lengkap
+
+### 🎨 Visual & UX
+- **Modern UI**: Design clean dengan Tailwind CSS
+- **Animasi Smooth**: Menggunakan VueUse Motion
+- **Color Coding**: Warna berbeda untuk setiap kategori data
+- **Loading States**: Indikator loading yang jelas
+- **Changelog Page**: Dokumentasi perubahan dan fitur baru
+
+---
+
+## 🚀 Teknologi
+
+### Backend
+- **Laravel 11/12**: Framework PHP modern dengan fitur terbaru
+- **MySQL**: Database relational untuk data pemilu
+- **Maatwebsite Excel**: Library untuk export data ke Excel
+
+### Frontend
+- **Vue.js 3**: Progressive JavaScript framework dengan Composition API
+- **Inertia.js**: Modern monolith framework untuk SPA experience
+- **Tailwind CSS**: Utility-first CSS framework
+- **VueUse Motion**: Animation library untuk Vue.js
+
+---
+
+## 📦 Instalasi
+
+### Prasyarat
+- PHP >= 8.1
+- Composer
+- Node.js & NPM
+- MySQL >= 8.0
+
+### Langkah Instalasi
+
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/aswandi/data-pemilu-2024.git
+   cd data-pemilu-2024
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   composer install
+   npm install
+   ```
+
+3. **Setup Environment**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Konfigurasi Database**
+
+   Edit file `.env`:
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=pileg2024
+   DB_USERNAME=root
+   DB_PASSWORD=your_password
+   ```
+
+5. **Import Database**
+
+   Database schema sudah tersedia. Import data pemilu ke database MySQL Anda.
+
+6. **Build Assets**
+   ```bash
+   npm run build
+   ```
+
+7. **Jalankan Aplikasi**
+   ```bash
+   php artisan serve
+   ```
+
+   Aplikasi dapat diakses di: `http://localhost:8000`
+
+---
+
+## 📁 Struktur Database
+
+### Tabel Wilayah (Regional)
+- `pdpr_wil_pro` - Data Provinsi
+- `pdpr_wil_kab` - Data Kabupaten/Kota
+- `pdpr_wil_kec` - Data Kecamatan
+- `pdpr_wil_kel` - Data Kelurahan/Desa
+- `pdpr_wil_tps` - Data TPS (Tempat Pemungutan Suara)
+- `pdpr_wil_dapil` - Data Daerah Pemilihan
+
+### Tabel Kandidat
+- `dpr_ri_caleg` - Calon Legislatif DPR RI
+- `dprd_pro_caleg` - Calon Legislatif DPRD Provinsi
+- `dprd_kab_caleg` - Calon Legislatif DPRD Kabupaten/Kota
+- `dpd_caleg` - Calon Legislatif DPD
+
+### Tabel Hasil Suara
+- `hr_dpr_ri_kec` - Hasil suara DPR RI per kecamatan
+- `hs_dpr_ri_tps` - Hasil suara DPR RI per TPS
+- `hs_dpr_ri_kel` - Hasil suara DPR RI per kelurahan
+
+---
+
+## 🎯 Fitur Unggulan Export Excel
+
+### Data Suara Caleg per Desa
+Export data dengan fitur:
+- ✅ **Granularitas Per Desa**: Data vote per desa/kelurahan
+- ✅ **Header Hierarkis**: 4-row header dengan kecamatan dan kode wilayah
+- ✅ **Multi-sheet Smart**: Auto-split 50 desa per sheet
+- ✅ **Visual Highlight**:
+  - Baris PARTAI: Background biru muda + teks biru gelap
+  - Baris TOTAL: Background kuning + teks coklat
+- ✅ **Format Professional**: Ribuan separator, freeze panes, merge cells
+- ✅ **Sheet Summary**: Sheet terakhir dengan kolom Total Suara
+
+### Data Suara DPR per TPS
+Export data dengan:
+- ✅ **Detail Per TPS**: Data lengkap setiap TPS di kecamatan
+- ✅ **Suara Partai**: Kolom terpisah untuk suara partai
+- ✅ **Suara Caleg**: Kolom per kandidat sesuai dapil
+- ✅ **Statistik**: Total suara dan partisipasi pemilih
+
+---
+
+## 📝 Changelog
+
+Lihat [Changelog](https://pemilucaleg2024.aplikasiweb.my.id/changelog) untuk detail perubahan dan fitur baru.
+
+### Version 1.3.4 (5 Oktober 2025)
+- Export Excel data suara caleg per desa dengan visual enhancement
+- Header 4-row: Kecamatan → Kode Kec → Kode Desa → Nama Desa
+- Warna highlight untuk baris PARTAI dan TOTAL
+- Auto-split multi-sheet dengan 50 desa per sheet
+- Memory optimization untuk handle 150+ desa
+
+---
+
+## 🤝 Kontribusi
+
+Kontribusi selalu diterima! Silakan buat issue atau pull request untuk perbaikan dan fitur baru.
+
+---
+
+## 📄 Lisensi
+
+Project ini dibuat untuk keperluan pendidikan dan transparansi data pemilu Indonesia.
+
+---
+
+## 👨‍💻 Developer
+
+Dikembangkan dengan ❤️ menggunakan Laravel, Vue.js, dan Inertia.js
+
+🤖 *Generated with [Claude Code](https://claude.com/claude-code)*
+
+---
+
+## 🔗 Links
+
+- **Live Demo**: [https://pemilucaleg2024.aplikasiweb.my.id](https://pemilucaleg2024.aplikasiweb.my.id)
+- **Repository**: [https://github.com/aswandi/data-pemilu-2024](https://github.com/aswandi/data-pemilu-2024)
